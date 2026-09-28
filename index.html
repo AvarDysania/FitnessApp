@@ -1,0 +1,1600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    <script src="config.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Healthive Pro - Precision Nutrition & Analytics</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            blue: '#2563EB',
+                            lightBlue: '#EFF6FF',
+                            dark: '#0F172A'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #F8FAFC;
+            color: #0F172A;
+            -webkit-font-smoothing: antialiased;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .modal-overlay {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(8px);
+        }
+        @keyframes scanLine {
+            0% { top: 10%; }
+            50% { top: 85%; }
+            100% { top: 10%; }
+        }
+        .scanner-line {
+            animation: scanLine 2.5s ease-in-out infinite;
+        }
+
+        #motionTransitionOverlay {
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease-in-out;
+        }
+        #motionTransitionOverlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .motion-slide-up {
+            transform: translateY(100%);
+            transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        #motionTransitionOverlay.active .motion-slide-up {
+            transform: translateY(0);
+        }
+
+        body.navigating #mainAppContainer {
+            transform: scale(0.96);
+            opacity: 0.5;
+            transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease-in-out;
+        }
+        #mainAppContainer {
+            transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease-in-out;
+        }
+
+        @keyframes pulseGlow {
+            0%, 100% { opacity: 0.4; transform: scale(0.98); }
+            50% { opacity: 0.9; transform: scale(1.03); }
+        }
+        .ai-glow-anim {
+            animation: pulseGlow 2s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="pb-24 sm:pb-8 bg-[#F8FAFC] text-slate-800 antialiased selection:bg-blue-600 selection:text-white relative overflow-x-hidden">
+
+    <!-- Motion Page Transition Layer -->
+    <div id="motionTransitionOverlay" class="fixed inset-0 z-50 flex items-end justify-center pointer-events-none">
+        <div class="absolute inset-0 bg-slate-900/20 backdrop-blur-sm"></div>
+        <div class="motion-slide-up relative z-10 w-full max-w-lg bg-white rounded-t-3xl border-t border-slate-200/80 p-6 shadow-2xl flex flex-col items-center">
+            <div class="w-10 h-1 bg-slate-200 rounded-full mb-6"></div>
+            <div class="flex items-center gap-4 w-full">
+                <div class="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold shrink-0">
+                    <i data-lucide="user" class="w-6 h-6"></i>
+                </div>
+                <div class="flex-1">
+                    <div class="h-4 bg-slate-200 rounded-full w-28 animate-pulse mb-2"></div>
+                    <div class="h-3 bg-slate-100 rounded-full w-40 animate-pulse"></div>
+                </div>
+                <div class="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Application Wrapper -->
+    <div id="mainAppContainer">
+        <!-- API Key Modal -->
+        <div id="apiKeyModal" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 modal-overlay hidden">
+            <div class="bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-100 max-w-md w-full p-6 sm:p-8 relative overflow-hidden">
+                <button onclick="toggleApiKeyModal()" class="absolute top-5 right-5 text-slate-400 hover:text-slate-600">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+                <div class="mb-6">
+                    <div class="flex items-center gap-2 mb-1">
+                        <i data-lucide="key" class="w-5 h-5 text-blue-600"></i>
+                        <h3 class="text-xl font-bold text-slate-900">API Key Settings</h3>
+                    </div>
+                    <p class="text-xs text-slate-500 font-medium">Manage your Gemini API Key for AI features</p>
+                </div>
+                <form onsubmit="handleSaveApiKey(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase mb-2">Gemini API Key</label>
+                        <input type="password" id="userApiKeyInput" required placeholder="AIzaSy..." class="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-blue-600">
+                    </div>
+                    <button type="submit" class="w-full py-3.5 bg-blue-600 text-white font-bold text-sm rounded-xl shadow-lg shadow-blue-500/20 active:scale-[0.98]">
+                        Save API Key
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Auth Modal -->
+        <div id="authModal" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 modal-overlay hidden">
+            <div class="bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-100 max-w-md w-full p-6 sm:p-8 relative overflow-hidden">
+                <button onclick="toggleAuthModal()" class="absolute top-5 right-5 text-slate-400 hover:text-slate-600">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+
+                <div id="signInView">
+                    <div class="mb-6">
+                        <h3 class="text-2xl font-bold text-slate-900">Welcome Back</h3>
+                        <p class="text-xs text-slate-500 font-medium mt-1">Access your calorie dashboard</p>
+                    </div>
+                    <form onsubmit="handleAuth(event)" class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase mb-2">Email</label>
+                            <input type="email" id="signInEmail" required placeholder="esther@healthive.io" class="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-blue-600">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase mb-2">Password</label>
+                            <input type="password" required placeholder="••••••••" class="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-blue-600">
+                        </div>
+                        <button type="submit" class="w-full py-3.5 bg-blue-600 text-white font-bold text-sm rounded-xl shadow-lg shadow-blue-500/20 active:scale-[0.98]">
+                            Sign In
+                        </button>
+                    </form>
+                    <p class="mt-6 text-center text-xs text-slate-500">
+                        Don't have an account? <button onclick="switchAuthMode('signup')" class="font-bold text-blue-600">Sign Up</button>
+                    </p>
+                </div>
+
+                <div id="signUpView" class="hidden">
+                    <div class="mb-6">
+                        <h3 class="text-2xl font-bold text-slate-900">Create Account</h3>
+                        <p class="text-xs text-slate-500 font-medium mt-1">Precision nutrition tracking</p>
+                    </div>
+                    <form onsubmit="handleAuth(event)" class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase mb-2">Full Name</label>
+                            <input type="text" id="signUpName" required placeholder="Esther Howard" class="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-blue-600">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase mb-2">Email</label>
+                            <input type="email" id="signUpEmail" required placeholder="esther@healthive.io" class="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-blue-600">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase mb-2">Password</label>
+                            <input type="password" required placeholder="••••••••" class="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-blue-600">
+                        </div>
+                        <button type="submit" class="w-full py-3.5 bg-blue-600 text-white font-bold text-sm rounded-xl shadow-lg shadow-blue-500/20 active:scale-[0.98]">
+                            Create Account
+                        </button>
+                    </form>
+                    <p class="mt-6 text-center text-xs text-slate-500">
+                        Already have an account? <button onclick="switchAuthMode('signin')" class="font-bold text-blue-600">Sign In</button>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI CAMERA SCANNER MODAL -->
+        <div id="scannerModal" class="fixed inset-0 z-50 bg-slate-950 flex flex-col justify-between hidden">
+            <div class="px-6 py-5 flex items-center justify-between text-white z-10">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="scan" class="w-5 h-5 text-blue-400"></i>
+                    <span class="font-bold text-sm tracking-wide">AI Food Vision</span>
+                </div>
+                <button onclick="stopScanner()" class="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+
+            <div class="relative flex-1 flex items-center justify-center overflow-hidden bg-black">
+                <video id="cameraVideo" class="absolute inset-0 w-full h-full object-cover" autoplay playsinline></video>
+                <img id="scannedImagePreview" class="absolute inset-0 w-full h-full object-cover hidden transition-all duration-300" alt="Scanned Meal">
+
+                <div id="scannerBox" class="relative z-10 w-72 h-72 border-2 border-blue-500/80 rounded-3xl flex flex-col justify-between p-4 shadow-2xl transition-all duration-300">
+                    <div id="scannerLine" class="scanner-line absolute left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-blue-400 to-transparent shadow-[0_0_15px_#3b82f6]"></div>
+                    <div class="flex justify-between">
+                        <div class="w-6 h-6 border-t-4 border-l-4 border-blue-500 rounded-tl-lg"></div>
+                        <div class="w-6 h-6 border-t-4 border-r-4 border-blue-500 rounded-tr-lg"></div>
+                    </div>
+                    <p id="scannerStatusText" class="text-center text-xs font-semibold text-white/90 bg-slate-900/80 backdrop-blur-md py-1.5 px-3 rounded-full self-center">
+                        Align meal inside box
+                    </p>
+                    <div class="flex justify-between">
+                        <div class="w-6 h-6 border-b-4 border-l-4 border-blue-500 rounded-bl-lg"></div>
+                        <div class="w-6 h-6 border-b-4 border-r-4 border-blue-500 rounded-br-lg"></div>
+                    </div>
+                </div>
+
+                <div id="aiProcessingOverlay" class="absolute inset-0 bg-slate-950/70 backdrop-blur-md z-20 flex flex-col items-center justify-center hidden">
+                    <div class="relative flex items-center justify-center">
+                        <div class="w-24 h-24 rounded-full bg-blue-600/30 border-2 border-blue-500/50 ai-glow-anim absolute"></div>
+                        <div class="w-16 h-16 rounded-full border-4 border-blue-500 border-t-transparent animate-spin"></div>
+                        <i data-lucide="sparkles" class="w-8 h-8 text-blue-400 absolute"></i>
+                    </div>
+                    <span class="mt-6 text-sm font-extrabold text-white tracking-wide">Analyzing Macronutrients...</span>
+                    <span class="text-xs text-blue-200/70 mt-1">AI Engine identifying food components</span>
+                </div>
+            </div>
+
+            <div class="px-8 py-6 bg-slate-900 text-white flex items-center justify-between z-10">
+                <label class="p-3 rounded-full bg-white/10 hover:bg-white/20 cursor-pointer" title="Upload from Gallery">
+                    <i data-lucide="image" class="w-6 h-6 text-white"></i>
+                    <input type="file" accept="image/*" class="hidden" onchange="handleGalleryUpload(event)">
+                </label>
+                <button id="scanTriggerBtn" onclick="processAiCameraScan()" class="w-16 h-16 rounded-full border-4 border-white flex items-center justify-center p-1 active:scale-95 transition-transform">
+                    <div class="w-full h-full bg-blue-600 rounded-full flex items-center justify-center">
+                        <i data-lucide="sparkles" class="w-6 h-6 text-white"></i>
+                    </div>
+                </button>
+                <button onclick="openManualMealModalFromScanner()" class="p-3 rounded-full bg-white/10 hover:bg-white/20" title="Manual Input">
+                    <i data-lucide="edit-3" class="w-6 h-6 text-white"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- AI SCAN RESULT POPUP PREVIEW MODAL -->
+        <div id="aiResultModal" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 modal-overlay hidden">
+            <div class="bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl border border-blue-100 max-w-md w-full p-6 relative overflow-hidden">
+                <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+                    <div class="flex items-center gap-2">
+                        <span class="p-2 rounded-xl bg-blue-50 text-blue-600">
+                            <i data-lucide="sparkles" class="w-5 h-5"></i>
+                        </span>
+                        <div>
+                            <h3 class="text-base font-extrabold text-slate-900">AI Nutrition Breakdown</h3>
+                            <p class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Identified Meal Preview</p>
+                        </div>
+                    </div>
+                    <button onclick="closeAiResultModal()" class="text-slate-400 hover:text-slate-600">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+
+                <div class="space-y-4">
+                    <div class="grid grid-cols-3 gap-2">
+                        <div class="col-span-2">
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Meal Title</label>
+                            <input type="text" id="aiResultTitle" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-600">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Category</label>
+                            <select id="aiResultCategory" class="w-full px-2 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-600">
+                                <option value="Breakfast">🍳 Breakfast</option>
+                                <option value="Lunch">🥗 Lunch</option>
+                                <option value="Dinner">🥩 Dinner</option>
+                                <option value="Snack">🍏 Snack</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="bg-blue-50/80 rounded-2xl p-3 border border-blue-100 flex items-center justify-between">
+                        <div>
+                            <span class="text-xs font-extrabold text-blue-900">Serving Quantity</span>
+                            <p class="text-[10px] text-blue-600/80 font-medium">Auto-calculates macro totals</p>
+                        </div>
+                        <div class="flex items-center gap-3 bg-white px-3 py-1.5 rounded-xl border border-blue-200 shadow-xs">
+                            <button onclick="adjustQuantity(-0.5)" class="text-blue-600 hover:text-blue-800 font-bold text-base">-</button>
+                            <span id="aiResultQty" class="text-xs font-extrabold text-slate-900 w-8 text-center">1x</span>
+                            <button onclick="adjustQuantity(1)" class="text-blue-600 hover:text-blue-800 font-bold text-base">+1</button>
+                        </div>
+                    </div>
+
+                    <div class="text-center py-2 bg-slate-900 text-white rounded-2xl shadow-md">
+                        <span class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Total Energy</span>
+                        <div class="flex items-baseline justify-center gap-1">
+                            <span id="aiResultTotalCalories" class="text-3xl font-extrabold text-blue-400">0</span>
+                            <span class="text-xs font-bold text-slate-300">Kcal</span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <span class="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-2">Primary Macros</span>
+                        <div class="grid grid-cols-3 gap-2">
+                            <div class="bg-amber-50 p-2.5 rounded-xl border border-amber-100 text-center">
+                                <p class="text-[9px] font-bold text-amber-600 uppercase">Carbs</p>
+                                <p id="aiResultCarbs" class="text-sm font-extrabold text-amber-900">0g</p>
+                            </div>
+                            <div class="bg-blue-50 p-2.5 rounded-xl border border-blue-100 text-center">
+                                <p class="text-[9px] font-bold text-blue-600 uppercase">Protein</p>
+                                <p id="aiResultProtein" class="text-sm font-extrabold text-blue-900">0g</p>
+                            </div>
+                            <div class="bg-rose-50 p-2.5 rounded-xl border border-rose-100 text-center">
+                                <p class="text-[9px] font-bold text-rose-600 uppercase">Fats</p>
+                                <p id="aiResultFat" class="text-sm font-extrabold text-rose-900">0g</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pt-2 border-t border-slate-100">
+                        <span class="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-2">Micronutrients & Fiber</span>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div class="px-3 py-2 bg-purple-50 rounded-xl border border-purple-100 flex items-center justify-between">
+                                <span class="text-xs font-bold text-purple-700">Sugar</span>
+                                <span id="aiResultSugar" class="text-xs font-extrabold text-purple-950">0g</span>
+                            </div>
+                            <div class="px-3 py-2 bg-emerald-50 rounded-xl border border-emerald-100 flex items-center justify-between">
+                                <span class="text-xs font-bold text-emerald-700">Fiber</span>
+                                <span id="aiResultFiber" class="text-xs font-extrabold text-emerald-950">0g</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between text-xs text-slate-500 pt-1">
+                        <span>Incorrect scan?</span>
+                        <label class="font-bold text-blue-600 hover:underline cursor-pointer flex items-center gap-1">
+                            <i data-lucide="image" class="w-3.5 h-3.5"></i> Upload Image
+                            <input type="file" accept="image/*" class="hidden" onchange="handleGalleryUpload(event)">
+                        </label>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2 pt-2">
+                        <button onclick="retakeScanImage()" class="py-3 px-4 border border-slate-200 text-slate-700 font-bold text-xs rounded-xl hover:bg-slate-50 flex items-center justify-center gap-1.5 active:scale-95 transition-all">
+                            <i data-lucide="rotate-ccw" class="w-4 h-4"></i> Retake Photo
+                        </button>
+                        <button onclick="confirmAndSaveAiMeal()" class="py-3 px-4 bg-blue-600 text-white font-bold text-xs rounded-xl shadow-lg shadow-blue-500/20 hover:bg-blue-700 flex items-center justify-center gap-1.5 active:scale-95 transition-all">
+                            <i data-lucide="check" class="w-4 h-4"></i> Save to Log
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW ALL MEALS MODAL -->
+        <div id="allMealsModal" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 modal-overlay hidden">
+            <div class="bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-100 max-w-lg w-full p-6 relative overflow-hidden flex flex-col max-h-[85vh]">
+                <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4 shrink-0">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+                            <i data-lucide="utensils" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-base font-extrabold text-slate-900">Today's Complete Meal Log</h3>
+                            <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Detailed Itemized Breakdown</p>
+                        </div>
+                    </div>
+                    <button onclick="toggleAllMealsModal()" class="text-slate-400 hover:text-slate-600 p-1">
+                        <i data-lucide="x" class="w-6 h-6"></i>
+                    </button>
+                </div>
+
+                <div id="allMealsModalList" class="overflow-y-auto space-y-3 pr-1 flex-1"></div>
+            </div>
+        </div>
+
+        <!-- QUICK ADD MEAL MODAL WITH AI AUTO-FILL -->
+        <div id="addMealModal" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 modal-overlay hidden">
+            <div class="bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-100 max-w-md w-full p-6 relative overflow-hidden">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h3 class="text-xl font-bold text-slate-900">Add Meal / Food Item</h3>
+                        <p class="text-xs text-slate-500">Manually enter or use AI auto-calculate</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <!-- AI Estimate Button in Top Right Corner -->
+                        <button type="button" id="aiAutoFillBtn" onclick="autoFillMacrosWithAI()" class="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-extrabold text-xs rounded-xl shadow-md shadow-blue-500/20 active:scale-95 transition-all">
+                            <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+                            <span id="aiAutoFillText">AI Estimate</span>
+                        </button>
+                        <button onclick="toggleAddMealModal()" class="text-slate-400 hover:text-slate-600 p-1">
+                            <i data-lucide="x" class="w-6 h-6"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <form onsubmit="handleManualMealAdd(event)" class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Meal Type</label>
+                        <select id="mealCategory" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-600 font-medium">
+                            <option value="Breakfast">🍳 Breakfast</option>
+                            <option value="Lunch">🥗 Lunch</option>
+                            <option value="Dinner">🥩 Dinner</option>
+                            <option value="Snack">🍏 Snack</option>
+                        </select>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-2">
+                        <div class="col-span-2">
+                            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Food Description</label>
+                            <input type="text" id="mealTitle" required placeholder="e.g. Grilled Chicken & Rice" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-600">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Weight / Grams</label>
+                            <input type="text" id="mealGrams" placeholder="e.g. 200g" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-600">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Calories (Kcal)</label>
+                            <input type="number" id="mealCalories" required placeholder="0" min="0" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-600 font-bold text-slate-900">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Protein (g)</label>
+                            <input type="number" id="mealProtein" placeholder="0" min="0" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-600 font-bold text-slate-900">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Carbs (g)</label>
+                            <input type="number" id="mealCarbs" placeholder="0" min="0" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-600 font-bold text-slate-900">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Fats (g)</label>
+                            <input type="number" id="mealFat" placeholder="0" min="0" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-600 font-bold text-slate-900">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="w-full mt-2 py-3.5 bg-blue-600 text-white font-extrabold text-sm rounded-xl shadow-lg shadow-blue-500/20 active:scale-[0.98] transition-transform">
+                        Save Meal
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Header -->
+        <header class="sticky top-0 z-40 bg-white/90 backdrop-blur-md px-4 sm:px-8 py-3.5 flex items-center justify-between border-b border-slate-200/80">
+            <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="12" cy="6" r="3" fill="currentColor"/>
+                        <circle cx="12" cy="18" r="3" fill="currentColor"/>
+                        <circle cx="6" cy="12" r="3" fill="currentColor"/>
+                        <circle cx="18" cy="12" r="3" fill="currentColor"/>
+                        <circle cx="12" cy="12" r="2.5" fill="white"/>
+                    </svg>
+                </div>
+                <span class="text-xl font-extrabold tracking-tight text-slate-900">Healthive <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 uppercase">PRO</span></span>
+            </div>
+
+            <div class="hidden sm:flex items-center gap-2">
+                <button onclick="switchTab('tracker')" id="headerTabTracker" class="px-3 py-1.5 bg-blue-50 text-blue-600 font-bold text-xs rounded-xl transition-all">
+                    Tracker
+                </button>
+                <button onclick="switchTab('progress')" id="headerTabProgress" class="px-3 py-1.5 border border-slate-200 text-slate-600 font-bold text-xs rounded-xl hover:bg-slate-50 transition-all">
+                    Progress
+                </button>
+                <button onclick="toggleFullScreen()" title="Toggle Fullscreen" class="p-2 border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition-all">
+                    <i data-lucide="maximize-2" class="w-4 h-4"></i>
+                </button>
+                <button onclick="toggleApiKeyModal()" title="API Key Settings" class="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-700 font-bold text-xs rounded-xl hover:bg-slate-50 transition-all">
+                    <i data-lucide="key" class="w-4 h-4 text-blue-600"></i>
+                    <span>API Key</span>
+                </button>
+                <button onclick="startScanner()" class="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white font-bold text-xs rounded-xl shadow-sm hover:bg-blue-700 active:scale-95 transition-all">
+                    <i data-lucide="scan" class="w-4 h-4"></i>
+                    <span>Scan</span>
+                </button>
+                <button id="authHeaderBtn" onclick="navigateToProfile(event)" class="px-3 py-1.5 border border-slate-200 text-slate-700 font-bold text-xs rounded-xl hover:bg-slate-50 transition-transform active:scale-95">
+                    Profile
+                </button>
+            </div>
+        </header>
+
+        <!-- MAIN VIEWS -->
+        <main class="p-4 sm:p-8 max-w-[1600px] mx-auto">
+            
+            <!-- VIEW 1: DAILY TRACKER -->
+            <div id="trackerTabContent" class="space-y-6">
+                <div class="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl p-5 text-white shadow-lg shadow-blue-500/20 flex items-center justify-between">
+                    <div class="max-w-[220px]">
+                        <h2 class="text-lg font-bold leading-tight">Instant AI Meal Scanner</h2>
+                        <p class="text-xs text-blue-100/90 mt-1">Point your camera or upload photo to extract macronutrients.</p>
+                    </div>
+                    <button onclick="startScanner()" class="w-12 h-12 rounded-2xl bg-white text-blue-600 flex items-center justify-center shadow-md active:scale-95 transition-transform shrink-0">
+                        <i data-lucide="camera" class="w-6 h-6"></i>
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-3 gap-3 bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-xs text-center">
+                    <div>
+                        <span id="statGoal" class="text-base font-extrabold text-slate-900">0</span>
+                        <p class="text-[9px] font-bold text-slate-400 uppercase">Goal</p>
+                    </div>
+                    <div class="border-x border-slate-100">
+                        <span id="statFood" class="text-base font-extrabold text-slate-900">0</span>
+                        <p class="text-[9px] font-bold text-slate-400 uppercase">Food</p>
+                    </div>
+                    <div>
+                        <span id="statLeft" class="text-base font-extrabold text-blue-600">0</span>
+                        <p class="text-[9px] font-bold text-slate-400 uppercase">Left</p>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs">
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="text-xs font-bold text-slate-900 uppercase">Energy Intake</h3>
+                        <span id="statProgressBadge" class="text-xs font-extrabold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">0% Goal</span>
+                    </div>
+                    <div class="flex items-baseline gap-1.5 mb-4">
+                        <span id="statConsumedBig" class="text-3xl font-extrabold text-slate-900">0</span>
+                        <span id="statGoalSub" class="text-xs font-bold text-slate-400">/ 0 Kcal</span>
+                    </div>
+                    <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden mb-5">
+                        <div id="statProgressBar" class="bg-blue-600 h-full rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-2 pt-4 border-t border-slate-100 text-center">
+                        <div class="p-2 rounded-xl bg-amber-50/60 border border-amber-100/60">
+                            <p class="text-[9px] font-extrabold uppercase text-amber-600">Carbs</p>
+                            <p id="statCarbs" class="text-sm font-extrabold text-amber-950">0g</p>
+                        </div>
+                        <div class="p-2 rounded-xl bg-blue-50/60 border border-blue-100/60">
+                            <p class="text-[9px] font-extrabold uppercase text-blue-600">Protein</p>
+                            <p id="statProtein" class="text-sm font-extrabold text-blue-950">0g</p>
+                        </div>
+                        <div class="p-2 rounded-xl bg-rose-50/60 border border-rose-100/60">
+                            <p class="text-[9px] font-extrabold uppercase text-rose-600">Fat</p>
+                            <p id="statFat" class="text-sm font-extrabold text-rose-950">0g</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center gap-2">
+                            <i data-lucide="droplet" class="w-4 h-4 text-blue-500"></i>
+                            <h3 class="text-xs font-bold text-slate-900 uppercase">Water Tracker</h3>
+                        </div>
+                        <span id="waterText" class="text-xs font-bold text-slate-600">0 / 2,500 ml</span>
+                    </div>
+                    <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden mb-4">
+                        <div id="waterBar" class="bg-blue-500 h-full rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="addWater(250)" class="flex-1 py-2 bg-blue-50 text-blue-600 text-xs font-bold rounded-xl hover:bg-blue-100 active:scale-95 transition-all">+250 ml</button>
+                        <button onclick="addWater(500)" class="flex-1 py-2 bg-blue-50 text-blue-600 text-xs font-bold rounded-xl hover:bg-blue-100 active:scale-95 transition-all">+500 ml</button>
+                        <button onclick="resetWater()" class="px-3 py-2 border border-slate-200 text-slate-400 text-xs font-bold rounded-xl hover:text-slate-600">Reset</button>
+                    </div>
+                </div>
+
+                <div class="bg-blue-50/70 p-4 rounded-2xl border border-blue-200/60 shadow-xs backdrop-blur-sm">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center gap-2">
+                            <i data-lucide="calendar" class="w-4 h-4 text-blue-600"></i>
+                            <span class="text-xs font-extrabold text-slate-900 uppercase tracking-wider">Log Calendar</span>
+                        </div>
+                        <select id="calendarMonthSelect" onchange="renderCalendar()" class="bg-white border border-blue-200 text-slate-800 text-xs font-bold py-1 px-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 shadow-xs cursor-pointer">
+                            <option value="0">Jan 2026</option>
+                            <option value="1">Feb 2026</option>
+                            <option value="2">Mar 2026</option>
+                            <option value="3">Apr 2026</option>
+                            <option value="4">May 2026</option>
+                            <option value="5">Jun 2026</option>
+                            <option value="6">Jul 2026</option>
+                            <option value="7">Aug 2026</option>
+                            <option value="8" selected>Sep 2026</option>
+                            <option value="9">Oct 2026</option>
+                            <option value="10">Nov 2026</option>
+                            <option value="11">Dec 2026</option>
+                        </select>
+                    </div>
+
+                    <div class="grid grid-cols-7 text-center gap-1 mb-2">
+                        <span class="text-[10px] font-extrabold text-blue-600">Sun</span>
+                        <span class="text-[10px] font-extrabold text-blue-600">Mon</span>
+                        <span class="text-[10px] font-extrabold text-blue-600">Tue</span>
+                        <span class="text-[10px] font-extrabold text-blue-600">Wed</span>
+                        <span class="text-[10px] font-extrabold text-blue-600">Thu</span>
+                        <span class="text-[10px] font-extrabold text-blue-600">Fri</span>
+                        <span class="text-[10px] font-extrabold text-blue-600">Sat</span>
+                    </div>
+
+                    <div id="calendarDaysGrid" class="grid grid-cols-7 gap-1.5 text-center"></div>
+                </div>
+
+                <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs space-y-4">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider">Today's Meals Breakdown</h3>
+                        <div class="flex items-center gap-2">
+                            <button onclick="toggleAllMealsModal()" class="text-xs font-bold text-slate-600 hover:text-blue-600 flex items-center gap-1 bg-slate-100 px-2.5 py-1 rounded-lg">
+                                <i data-lucide="eye" class="w-3.5 h-3.5"></i> View All
+                            </button>
+                            <button onclick="toggleAddMealModal()" class="text-xs font-bold text-blue-600 flex items-center gap-1 bg-blue-50 px-2.5 py-1 rounded-lg hover:bg-blue-100">
+                                <i data-lucide="plus" class="w-3.5 h-3.5"></i> Add
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="structuredMealSection" class="space-y-3"></div>
+                </div>
+
+                <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider">Macro Distribution</h3>
+                        <span class="text-[10px] text-slate-400 font-semibold">Grams Intake</span>
+                    </div>
+                    <div class="h-48 relative">
+                        <canvas id="foodBalanceChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW 2: PROGRESS TAB -->
+            <div id="progressTabContent" class="space-y-6 hidden">
+                <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+                    <div>
+                        <h2 class="text-lg font-extrabold text-slate-900">Your Activity Progress</h2>
+                        <p class="text-xs text-slate-500">Real-time stats generated strictly from your logged meals and water</p>
+                    </div>
+                    <div class="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+                        <i data-lucide="activity" class="w-5 h-5"></i>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase">Days Tracked</span>
+                        <p id="progressDaysTracked" class="text-xl font-extrabold text-slate-900 mt-0.5">0</p>
+                    </div>
+                    <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase">Total Calories</span>
+                        <p id="progressTotalCalories" class="text-xl font-extrabold text-blue-600 mt-0.5">0 Kcal</p>
+                    </div>
+                    <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase">Avg Daily Intake</span>
+                        <p id="progressAvgCalories" class="text-xl font-extrabold text-slate-900 mt-0.5">0 Kcal</p>
+                    </div>
+                    <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase">Total Meals Logged</span>
+                        <p id="progressTotalMeals" class="text-xl font-extrabold text-emerald-600 mt-0.5">0</p>
+                    </div>
+                </div>
+
+                <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
+                    <h3 class="text-xs font-extrabold text-slate-900 uppercase tracking-wider mb-4">Calorie Intake Trend</h3>
+                    <div id="chartContainer" class="h-56 relative">
+                        <canvas id="calorieTrendChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
+                    <h3 class="text-xs font-extrabold text-slate-900 uppercase tracking-wider mb-4">Logged Daily History</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-slate-50 text-slate-500 uppercase text-[9px] font-extrabold border-b border-slate-100">
+                                <tr>
+                                    <th class="py-2.5 px-3">Date</th>
+                                    <th class="py-2.5 px-3">Target</th>
+                                    <th class="py-2.5 px-3">Consumed</th>
+                                    <th class="py-2.5 px-3">Water</th>
+                                    <th class="py-2.5 px-3">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="progressTableBody" class="divide-y divide-slate-100 font-bold text-slate-700"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- Mobile Navigation Bar -->
+        <div class="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/80 px-6 py-2 sm:hidden flex items-center justify-around">
+            <button onclick="switchTab('tracker')" id="navTabTracker" class="flex flex-col items-center gap-1 text-blue-600 font-bold text-[10px]">
+                <i data-lucide="flame" class="w-5 h-5"></i>
+                <span>Tracker</span>
+            </button>
+            <button onclick="toggleApiKeyModal()" class="flex flex-col items-center gap-1 text-slate-400 font-bold text-[10px] hover:text-slate-700">
+                <i data-lucide="key" class="w-5 h-5"></i>
+                <span>API Key</span>
+            </button>
+            <button onclick="startScanner()" class="flex flex-col items-center -mt-5">
+                <div class="w-12 h-12 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-500/40 active:scale-95 transition-transform">
+                    <i data-lucide="scan" class="w-6 h-6"></i>
+                </div>
+                <span class="text-[9px] font-bold text-slate-600 mt-1">Scan</span>
+            </button>
+            <button onclick="switchTab('progress')" id="navTabProgress" class="flex flex-col items-center gap-1 text-slate-400 font-bold text-[10px] hover:text-slate-700">
+                <i data-lucide="bar-chart-2" class="w-5 h-5"></i>
+                <span>Progress</span>
+            </button>
+            <a href="profile.html" onclick="navigateToProfile(event)" class="flex flex-col items-center gap-1 text-slate-400 font-bold text-[10px] hover:text-slate-700 group">
+                <i data-lucide="user" class="w-5 h-5 transition-transform group-active:scale-110"></i>
+                <span>Profile</span>
+            </a>
+        </div>
+    </div>
+
+   
+    <script>
+        lucide.createIcons();
+
+        function getapikey() {
+            return localStorage.getItem('healthive_api_key') || (typeof GEMINI_API_KEY !== 'undefined' ? GEMINI_API_KEY : '');
+        }
+
+        function toggleApiKeyModal() {
+            const modal = document.getElementById('apiKeyModal');
+            modal.classList.toggle('hidden');
+            if (!modal.classList.contains('hidden')) {
+                document.getElementById('userApiKeyInput').value = getapikey();
+            }
+        }
+
+        function handleSaveApiKey(event) {
+            event.preventDefault();
+            const key = document.getElementById('userApiKeyInput').value.trim();
+            localStorage.setItem('healthive_api_key', key);
+            toggleApiKeyModal();
+            alert('API key updated successfully!');
+        }
+
+        // Application State
+        const state = {
+            goal: 2200,
+            consumed: 0,
+            carbs: 0,
+            protein: 0,
+            fat: 0,
+            sugar: 0,
+            fiber: 0,
+            water: 0,
+            waterGoal: 2500,
+            streak: 0,
+            meals: [],
+            userHistory: {}
+        };
+
+        let pendingAiMeal = {
+            title: '',
+            category: 'Lunch',
+            baseCalories: 0,
+            baseCarbs: 0,
+            baseProtein: 0,
+            baseFat: 0,
+            baseSugar: 0,
+            baseFiber: 0,
+            quantity: 1
+        };
+
+        let selectedDay = new Date().getDate();
+        let videoStream = null;
+        let macroChart = null;
+        let trendChart = null;
+
+        function getTodayKey() {
+            const today = new Date();
+            return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+        }
+
+        function persistUserState() {
+            const todayKey = getTodayKey();
+            if (!state.userHistory[todayKey]) {
+                state.userHistory[todayKey] = { calories: 0, water: 0, mealsCount: 0, goal: state.goal };
+            }
+            state.userHistory[todayKey].calories = state.consumed;
+            state.userHistory[todayKey].water = state.water;
+            state.userHistory[todayKey].mealsCount = state.meals.length;
+            state.userHistory[todayKey].goal = state.goal;
+
+            localStorage.setItem('healthive_user_history', JSON.stringify(state.userHistory));
+            localStorage.setItem('healthive_today_meals', JSON.stringify(state.meals));
+            localStorage.setItem('healthive_today_water', state.water.toString());
+        }
+
+        function loadUserState() {
+            const savedHistory = localStorage.getItem('healthive_user_history');
+            if (savedHistory) {
+                try { state.userHistory = JSON.parse(savedHistory); } catch (e) { console.error(e); }
+            }
+
+            const savedMeals = localStorage.getItem('healthive_today_meals');
+            if (savedMeals) {
+                try {
+                    state.meals = JSON.parse(savedMeals);
+                    state.consumed = state.meals.reduce((sum, m) => sum + m.calories, 0);
+                    state.carbs = state.meals.reduce((sum, m) => sum + (m.carbs || 0), 0);
+                    state.protein = state.meals.reduce((sum, m) => sum + (m.protein || 0), 0);
+                    state.fat = state.meals.reduce((sum, m) => sum + (m.fat || 0), 0);
+                    state.sugar = state.meals.reduce((sum, m) => sum + (m.sugar || 0), 0);
+                    state.fiber = state.meals.reduce((sum, m) => sum + (m.fiber || 0), 0);
+                } catch (e) { console.error(e); }
+            }
+
+            const savedWater = localStorage.getItem('healthive_today_water');
+            if (savedWater !== null) {
+                state.water = parseInt(savedWater) || 0;
+            }
+        }
+
+        function toggleFullScreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.log(`Error attempting full-screen: ${err.message}`);
+                });
+            } else if (document.exitFullscreen) {
+                document.exitFullscreen();
+            }
+        }
+
+        function switchTab(tab) {
+            const trackerContent = document.getElementById('trackerTabContent');
+            const progressContent = document.getElementById('progressTabContent');
+            const btnTracker = document.getElementById('headerTabTracker');
+            const btnProgress = document.getElementById('headerTabProgress');
+            const navTracker = document.getElementById('navTabTracker');
+            const navProgress = document.getElementById('navTabProgress');
+
+            if (tab === 'tracker') {
+                trackerContent.classList.remove('hidden');
+                progressContent.classList.add('hidden');
+                if (btnTracker) btnTracker.className = "px-3 py-1.5 bg-blue-50 text-blue-600 font-bold text-xs rounded-xl transition-all";
+                if (btnProgress) btnProgress.className = "px-3 py-1.5 border border-slate-200 text-slate-600 font-bold text-xs rounded-xl hover:bg-slate-50 transition-all";
+                if (navTracker) navTracker.className = "flex flex-col items-center gap-1 text-blue-600 font-bold text-[10px]";
+                if (navProgress) navProgress.className = "flex flex-col items-center gap-1 text-slate-400 font-bold text-[10px] hover:text-slate-700";
+            } else {
+                trackerContent.classList.add('hidden');
+                progressContent.classList.remove('hidden');
+                if (btnProgress) btnProgress.className = "px-3 py-1.5 bg-blue-50 text-blue-600 font-bold text-xs rounded-xl transition-all";
+                if (btnTracker) btnTracker.className = "px-3 py-1.5 border border-slate-200 text-slate-600 font-bold text-xs rounded-xl hover:bg-slate-50 transition-all";
+                if (navProgress) navProgress.className = "flex flex-col items-center gap-1 text-blue-600 font-bold text-[10px]";
+                if (navTracker) navTracker.className = "flex flex-col items-center gap-1 text-slate-400 font-bold text-[10px] hover:text-slate-700";
+
+                renderProgressTab();
+            }
+        }
+
+        function renderProgressTab() {
+            const tbody = document.getElementById('progressTableBody');
+            tbody.innerHTML = '';
+
+            persistUserState();
+
+            const dates = Object.keys(state.userHistory).sort();
+            const trackedCount = dates.length;
+
+            let totalCal = 0;
+            let totalMealsCount = 0;
+
+            dates.forEach(d => {
+                totalCal += state.userHistory[d].calories || 0;
+                totalMealsCount += state.userHistory[d].mealsCount || 0;
+            });
+
+            const avgCal = trackedCount > 0 ? Math.round(totalCal / trackedCount) : 0;
+
+            document.getElementById('progressDaysTracked').textContent = trackedCount;
+            document.getElementById('progressTotalCalories').textContent = `${totalCal.toLocaleString()} Kcal`;
+            document.getElementById('progressAvgCalories').textContent = `${avgCal.toLocaleString()} Kcal`;
+            document.getElementById('progressTotalMeals').textContent = totalMealsCount;
+
+            if (trackedCount === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-slate-400 font-medium">No meals logged yet. Log a meal in the Tracker tab to see real progress.</td></tr>`;
+            } else {
+                dates.slice().reverse().forEach(dateStr => {
+                    const item = state.userHistory[dateStr];
+                    const tr = document.createElement('tr');
+                    const target = item.goal || state.goal;
+                    const isMet = item.calories >= (target * 0.9) && item.calories <= (target * 1.1);
+                    const badge = item.calories === 0 
+                        ? `<span class="px-2 py-0.5 rounded text-[10px] bg-slate-100 text-slate-500 font-bold">No Data</span>`
+                        : (isMet 
+                            ? `<span class="px-2 py-0.5 rounded text-[10px] bg-emerald-50 text-emerald-600 font-extrabold">On Target</span>` 
+                            : `<span class="px-2 py-0.5 rounded text-[10px] bg-blue-50 text-blue-600 font-extrabold">Logged</span>`);
+
+                    tr.innerHTML = `
+                        <td class="py-2.5 px-3 font-semibold text-slate-900">${dateStr}</td>
+                        <td class="py-2.5 px-3 text-slate-400">${target} Kcal</td>
+                        <td class="py-2.5 px-3 text-slate-900 font-bold">${item.calories} Kcal</td>
+                        <td class="py-2.5 px-3 text-blue-600 font-bold">${item.water || 0} ml</td>
+                        <td class="py-2.5 px-3">${badge}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            const chartLabels = dates.length > 0 ? dates : [getTodayKey()];
+            const chartData = dates.length > 0 ? dates.map(d => state.userHistory[d].calories) : [0];
+
+            if (trendChart) trendChart.destroy();
+
+            const trendCtx = document.getElementById('calorieTrendChart').getContext('2d');
+            trendChart = new Chart(trendCtx, {
+                type: 'line',
+                data: {
+                    labels: chartLabels,
+                    datasets: [{
+                        label: 'Calories Consumed',
+                        data: chartData,
+                        borderColor: '#2563EB',
+                        backgroundColor: 'rgba(37, 99, 235, 0.08)',
+                        fill: true,
+                        tension: 0.2,
+                        borderWidth: 2.5,
+                        pointBackgroundColor: '#2563EB',
+                        pointRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { font: { size: 10, weight: '600' } } },
+                        y: { grid: { color: '#F1F5F9' }, ticks: { font: { size: 10 } }, beginAtZero: true }
+                    }
+                }
+            });
+        }
+
+        function renderCalendar() {
+            const grid = document.getElementById('calendarDaysGrid');
+            const monthSelect = document.getElementById('calendarMonthSelect');
+            const month = parseInt(monthSelect.value);
+            const year = 2026;
+
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+            grid.innerHTML = '';
+
+            for (let i = 0; i < firstDay; i++) {
+                const emptySlot = document.createElement('div');
+                emptySlot.className = 'h-9';
+                grid.appendChild(emptySlot);
+            }
+
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const hasLoggedMeal = Boolean(state.userHistory[dateKey] && state.userHistory[dateKey].calories > 0);
+                const isSelected = (day === selectedDay);
+
+                const dayCard = document.createElement('div');
+                dayCard.onclick = () => selectCalendarDay(day);
+
+                let bgClasses = 'bg-white text-slate-800 shadow-xs hover:bg-blue-50 border border-slate-100';
+                if (isSelected) {
+                    bgClasses = 'bg-blue-600 text-white shadow-md shadow-blue-500/30 font-extrabold';
+                }
+
+                dayCard.className = `h-9 rounded-xl flex flex-col items-center justify-center text-xs font-bold relative cursor-pointer transition-all ${bgClasses}`;
+                
+                let checkBadge = '';
+                if (hasLoggedMeal) {
+                    checkBadge = `<span class="absolute -top-1 -right-1 w-3.5 h-3.5 bg-blue-600 text-white text-[8px] rounded-full flex items-center justify-center font-bold border border-white">✓</span>`;
+                }
+
+                dayCard.innerHTML = `<span>${day}</span>${checkBadge}`;
+                grid.appendChild(dayCard);
+            }
+        }
+
+        function selectCalendarDay(day) {
+            selectedDay = day;
+            renderCalendar();
+        }
+
+        function navigateToProfile(event) {
+            event.preventDefault();
+            const overlay = document.getElementById('motionTransitionOverlay');
+            document.body.classList.add('navigating');
+            overlay.classList.add('active');
+
+            setTimeout(() => {
+                window.location.href = 'profile.html';
+            }, 300);
+        }
+
+        function syncProfileData() {
+            const savedProfile = localStorage.getItem('healthive_profile');
+            if (savedProfile) {
+                try {
+                    const parsed = JSON.parse(savedProfile);
+                    if (parsed.isLoggedIn) {
+                        const name = parsed.fullName || parsed.email.split('@')[0];
+                        document.getElementById('authHeaderBtn').textContent = name;
+                    }
+                    if (parsed.metrics) {
+                        if (parsed.metrics.calorieGoal && parseInt(parsed.metrics.calorieGoal) > 0) {
+                            state.goal = parseInt(parsed.metrics.calorieGoal);
+                        }
+                        if (parsed.metrics.waterGoal && parseInt(parsed.metrics.waterGoal) > 0) {
+                            state.waterGoal = parseInt(parsed.metrics.waterGoal);
+                        }
+                    }
+                } catch (e) { console.error(e); }
+            }
+        }
+
+        function toggleAuthModal(mode = 'signin') {
+            const modal = document.getElementById('authModal');
+            modal.classList.toggle('hidden');
+            if (!modal.classList.contains('hidden')) switchAuthMode(mode);
+        }
+
+        function switchAuthMode(mode) {
+            const signInView = document.getElementById('signInView');
+            const signUpView = document.getElementById('signUpView');
+            if (mode === 'signup') {
+                signInView.classList.add('hidden');
+                signUpView.classList.remove('hidden');
+            } else {
+                signUpView.classList.add('hidden');
+                signInView.classList.remove('hidden');
+            }
+        }
+
+        function handleAuth(event) {
+            event.preventDefault();
+            const signUpName = document.getElementById('signUpName').value;
+            const signInEmail = document.getElementById('signInEmail').value;
+            const signUpEmail = document.getElementById('signUpEmail').value;
+
+            const nameToDisplay = signUpName || (signInEmail ? signInEmail.split('@')[0] : '') || (signUpEmail ? signUpEmail.split('@')[0] : '') || "Logged In";
+            
+            document.getElementById('authHeaderBtn').textContent = nameToDisplay;
+            
+            const savedProfile = localStorage.getItem('healthive_profile');
+            let profileObj = savedProfile ? JSON.parse(savedProfile) : {};
+            profileObj.isLoggedIn = true;
+            profileObj.fullName = nameToDisplay;
+            profileObj.email = signInEmail || signUpEmail || profileObj.email || "user@healthive.io";
+            localStorage.setItem('healthive_profile', JSON.stringify(profileObj));
+
+            toggleAuthModal();
+            updateUI();
+        }
+
+        function toggleAddMealModal() {
+            document.getElementById('addMealModal').classList.toggle('hidden');
+        }
+
+        // AUTO-FILL MACROS USING GEMINI AI (Text / Grams based)
+        async function autoFillMacrosWithAI() {
+            const mealTitle = document.getElementById('mealTitle').value.trim();
+            const mealGrams = document.getElementById('mealGrams').value.trim();
+
+            if (!mealTitle) {
+                alert("Please enter a food description first (e.g. 'Grilled Chicken & Rice')");
+                document.getElementById('mealTitle').focus();
+                return;
+            }
+
+            const apiKey = getapikey();
+            if (!apiKey) {
+                alert("Please set your Gemini API Key first.");
+                toggleApiKeyModal();
+                return;
+            }
+
+            const aiBtn = document.getElementById('aiAutoFillBtn');
+            const aiText = document.getElementById('aiAutoFillText');
+            
+            // Visual loading state
+            aiBtn.disabled = true;
+            aiText.textContent = "Estimating...";
+
+            try {
+                const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
+                
+                let prompt = `Calculate calories and macronutrients for this food item: "${mealTitle}".`;
+                if (mealGrams) {
+                    prompt += ` The specified weight or quantity is: "${mealGrams}".`;
+                } else {
+                    prompt += ` Assume a standard portion size.`;
+                }
+
+                const requestPayload = {
+                    contents: [{
+                        parts: [{ text: prompt }]
+                    }],
+                    generationConfig: {
+                        responseMimeType: "application/json",
+                        responseSchema: {
+                            type: "OBJECT",
+                            properties: {
+                                calories: { type: "INTEGER" },
+                                protein: { type: "INTEGER" },
+                                carbs: { type: "INTEGER" },
+                                fat: { type: "INTEGER" }
+                            },
+                            required: ["calories", "protein", "carbs", "fat"]
+                        }
+                    }
+                };
+
+                const response = await fetch(endpoint, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(requestPayload)
+                });
+
+                if (!response.ok) {
+                    throw new Error("AI Request Failed");
+                }
+
+                const result = await response.json();
+                const data = JSON.parse(result.candidates[0].content.parts[0].text);
+
+                // Auto-fill form input fields
+                document.getElementById('mealCalories').value = data.calories || 0;
+                document.getElementById('mealProtein').value = data.protein || 0;
+                document.getElementById('mealCarbs').value = data.carbs || 0;
+                document.getElementById('mealFat').value = data.fat || 0;
+
+            } catch (err) {
+                console.error("AI Macro Estimation Error:", err);
+                alert("Unable to calculate macros automatically. Please input manually.");
+            } finally {
+                aiBtn.disabled = false;
+                aiText.textContent = "AI Estimate";
+            }
+        }
+
+        function toggleAllMealsModal() {
+            const modal = document.getElementById('allMealsModal');
+            modal.classList.toggle('hidden');
+            if (!modal.classList.contains('hidden')) {
+                renderAllMealsModalList();
+            }
+        }
+
+        function renderAllMealsModalList() {
+            const listContainer = document.getElementById('allMealsModalList');
+            if (state.meals.length === 0) {
+                listContainer.innerHTML = `<p class="text-center text-xs text-slate-400 py-8 font-medium">No meals logged for today yet.</p>`;
+                return;
+            }
+
+            listContainer.innerHTML = state.meals.map((m, index) => `
+                <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <span class="text-xl p-2 rounded-xl bg-white shadow-xs">${m.icon}</span>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-extrabold text-slate-900">${m.title}</span>
+                                <span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-600">${m.category}</span>
+                            </div>
+                            <div class="flex gap-2 text-[10px] text-slate-400 font-semibold mt-1">
+                                <span>P: ${m.protein}g</span> • 
+                                <span>C: ${m.carbs}g</span> • 
+                                <span>F: ${m.fat}g</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="text-sm font-extrabold text-slate-900">${m.calories} Kcal</span>
+                        <button onclick="removeMeal(${index})" class="text-slate-400 hover:text-rose-600 p-1 transition-colors" title="Delete meal">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        function removeMeal(index) {
+            if (index >= 0 && index < state.meals.length) {
+                const removed = state.meals.splice(index, 1)[0];
+                state.consumed = Math.max(0, state.consumed - removed.calories);
+                state.protein = Math.max(0, state.protein - (removed.protein || 0));
+                state.carbs = Math.max(0, state.carbs - (removed.carbs || 0));
+                state.fat = Math.max(0, state.fat - (removed.fat || 0));
+                state.sugar = Math.max(0, state.sugar - (removed.sugar || 0));
+                state.fiber = Math.max(0, state.fiber - (removed.fiber || 0));
+
+                persistUserState();
+                renderCalendar();
+                updateUI();
+                renderAllMealsModalList();
+            }
+        }
+
+        function openManualMealModalFromScanner() {
+            stopScanner();
+            toggleAddMealModal();
+        }
+
+        function handleManualMealAdd(event) {
+            event.preventDefault();
+            const category = document.getElementById('mealCategory').value;
+            let title = document.getElementById('mealTitle').value;
+            const grams = document.getElementById('mealGrams').value.trim();
+            if (grams) {
+                title += ` (${grams})`;
+            }
+
+            const calories = parseInt(document.getElementById('mealCalories').value) || 0;
+            const protein = parseInt(document.getElementById('mealProtein').value) || 0;
+            const carbs = parseInt(document.getElementById('mealCarbs').value) || 0;
+            const fat = parseInt(document.getElementById('mealFat').value) || 0;
+
+            addMealToState(category, title, calories, protein, carbs, fat, 0, 0);
+            toggleAddMealModal();
+            event.target.reset();
+        }
+
+        function addMealToState(category, title, calories, protein = 0, carbs = 0, fat = 0, sugar = 0, fiber = 0) {
+            state.consumed += calories;
+            state.protein += protein;
+            state.carbs += carbs;
+            state.fat += fat;
+            state.sugar += sugar;
+            state.fiber += fiber;
+
+            const iconMap = { Breakfast: '🍳', Lunch: '🥗', Dinner: '🥩', Snack: '🍏' };
+
+            state.meals.push({
+                category,
+                title,
+                calories,
+                protein,
+                carbs,
+                fat,
+                sugar,
+                fiber,
+                icon: iconMap[category] || '🍽️'
+            });
+
+            persistUserState();
+            renderCalendar();
+            updateUI();
+        }
+
+        async function startScanner() {
+            const modal = document.getElementById('scannerModal');
+            const video = document.getElementById('cameraVideo');
+            const imgPreview = document.getElementById('scannedImagePreview');
+            const scannerBox = document.getElementById('scannerBox');
+            
+            imgPreview.classList.add('hidden');
+            imgPreview.src = '';
+            scannerBox.classList.remove('hidden');
+            modal.classList.remove('hidden');
+
+            try {
+                videoStream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'environment' }
+                });
+                video.srcObject = videoStream;
+            } catch (err) {
+                console.warn("Camera access standard stream failed:", err);
+            }
+        }
+
+        function stopScanner() {
+            const modal = document.getElementById('scannerModal');
+            modal.classList.add('hidden');
+            
+            const aiOverlay = document.getElementById('aiProcessingOverlay');
+            if (aiOverlay) aiOverlay.classList.add('hidden');
+
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+                videoStream = null;
+            }
+        }
+
+        function captureVideoFrameBase64() {
+            const video = document.getElementById('cameraVideo');
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth || 640;
+            canvas.height = video.videoHeight || 480;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            return canvas.toDataURL('image/jpeg');
+        }
+
+        function handleGalleryUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const fullBase64 = e.target.result;
+                const base64Data = fullBase64.split(',')[1];
+                
+                const modal = document.getElementById('scannerModal');
+                if (modal.classList.contains('hidden')) {
+                    modal.classList.remove('hidden');
+                }
+
+                displayScannedImageWithBlurAnimation(fullBase64);
+                executeGeminiFoodAnalysis(base64Data);
+            };
+            reader.readAsDataURL(file);
+            event.target.value = '';
+        }
+
+        function processAiCameraScan() {
+            const dataUrl = captureVideoFrameBase64();
+            const base64ImageData = dataUrl.split(',')[1];
+            displayScannedImageWithBlurAnimation(dataUrl);
+            executeGeminiFoodAnalysis(base64ImageData);
+        }
+
+        function displayScannedImageWithBlurAnimation(imageSrc) {
+            const imgPreview = document.getElementById('scannedImagePreview');
+            const scannerBox = document.getElementById('scannerBox');
+            const aiOverlay = document.getElementById('aiProcessingOverlay');
+
+            imgPreview.src = imageSrc;
+            imgPreview.classList.remove('hidden');
+            imgPreview.classList.add('blur-sm');
+            scannerBox.classList.add('hidden');
+            aiOverlay.classList.remove('hidden');
+        }
+
+        async function executeGeminiFoodAnalysis(base64ImageData) {
+            const apiKey = getapikey();
+            if (!apiKey) {
+                alert("Please set your Gemini API Key first.");
+                stopScanner();
+                toggleApiKeyModal();
+                return;
+            }
+
+            try {
+                const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
+                const prompt = "Analyze this food image. Provide estimated meal title, appropriate category (Breakfast, Lunch, Dinner, or Snack), calories, carbs in grams, protein in grams, fats in grams, sugar in grams, and fiber in grams.";
+
+                const requestPayload = {
+                    contents: [{
+                        parts: [
+                            { text: prompt },
+                            { inlineData: { mimeType: "image/jpeg", data: base64ImageData } }
+                        ]
+                    }],
+                    generationConfig: {
+                        responseMimeType: "application/json",
+                        responseSchema: {
+                            type: "OBJECT",
+                            properties: {
+                                title: { type: "STRING" },
+                                category: { type: "STRING", enum: ["Breakfast", "Lunch", "Dinner", "Snack"] },
+                                calories: { type: "INTEGER" },
+                                protein: { type: "INTEGER" },
+                                carbs: { type: "INTEGER" },
+                                fat: { type: "INTEGER" },
+                                sugar: { type: "INTEGER" },
+                                fiber: { type: "INTEGER" }
+                            },
+                            required: ["title", "category", "calories", "protein", "carbs", "fat", "sugar", "fiber"]
+                        }
+                    }
+                };
+
+                const response = await fetch(endpoint, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(requestPayload)
+                });
+
+                if (!response.ok) {
+                    const errData = await response.json();
+                    throw new Error(errData.error?.message || "API request failed");
+                }
+
+                const result = await response.json();
+                const aiJson = JSON.parse(result.candidates[0].content.parts[0].text);
+
+                pendingAiMeal = {
+                    title: aiJson.title || "Scanned Food Item",
+                    category: aiJson.category || "Lunch",
+                    baseCalories: aiJson.calories || 0,
+                    baseCarbs: aiJson.carbs || 0,
+                    baseProtein: aiJson.protein || 0,
+                    baseFat: aiJson.fat || 0,
+                    baseSugar: aiJson.sugar || 0,
+                    baseFiber: aiJson.fiber || 0,
+                    quantity: 1
+                };
+
+                stopScanner();
+                openAiResultModal();
+
+            } catch (err) {
+                console.error("Gemini Scan Error:", err);
+                pendingAiMeal = {
+                    title: "Scanned Healthy Meal",
+                    category: "Lunch",
+                    baseCalories: 450,
+                    baseCarbs: 45,
+                    baseProtein: 30,
+                    baseFat: 12,
+                    baseSugar: 5,
+                    baseFiber: 6,
+                    quantity: 1
+                };
+                stopScanner();
+                openAiResultModal();
+            }
+        }
+
+        function openAiResultModal() {
+            document.getElementById('aiResultTitle').value = pendingAiMeal.title;
+            document.getElementById('aiResultCategory').value = pendingAiMeal.category;
+            document.getElementById('aiResultModal').classList.remove('hidden');
+            updateAiResultModalFields();
+        }
+
+        function closeAiResultModal() {
+            document.getElementById('aiResultModal').classList.add('hidden');
+        }
+
+        function adjustQuantity(delta) {
+            pendingAiMeal.quantity = Math.max(0.5, pendingAiMeal.quantity + delta);
+            updateAiResultModalFields();
+        }
+
+        function updateAiResultModalFields() {
+            const q = pendingAiMeal.quantity;
+            document.getElementById('aiResultQty').textContent = `${q}x`;
+            document.getElementById('aiResultTotalCalories').textContent = Math.round(pendingAiMeal.baseCalories * q);
+            document.getElementById('aiResultCarbs').textContent = `${Math.round(pendingAiMeal.baseCarbs * q)}g`;
+            document.getElementById('aiResultProtein').textContent = `${Math.round(pendingAiMeal.baseProtein * q)}g`;
+            document.getElementById('aiResultFat').textContent = `${Math.round(pendingAiMeal.baseFat * q)}g`;
+            document.getElementById('aiResultSugar').textContent = `${Math.round(pendingAiMeal.baseSugar * q)}g`;
+            document.getElementById('aiResultFiber').textContent = `${Math.round(pendingAiMeal.baseFiber * q)}g`;
+        }
+
+        function retakeScanImage() {
+            closeAiResultModal();
+            startScanner();
+        }
+
+        function confirmAndSaveAiMeal() {
+            const q = pendingAiMeal.quantity;
+            const finalTitle = document.getElementById('aiResultTitle').value || pendingAiMeal.title;
+            const finalCategory = document.getElementById('aiResultCategory').value || pendingAiMeal.category;
+
+            addMealToState(
+                finalCategory,
+                finalTitle,
+                Math.round(pendingAiMeal.baseCalories * q),
+                Math.round(pendingAiMeal.baseProtein * q),
+                Math.round(pendingAiMeal.baseCarbs * q),
+                Math.round(pendingAiMeal.baseFat * q),
+                Math.round(pendingAiMeal.baseSugar * q),
+                Math.round(pendingAiMeal.baseFiber * q)
+            );
+
+            closeAiResultModal();
+        }
+
+        function addWater(amount) {
+            state.water = Math.min(state.waterGoal, state.water + amount);
+            persistUserState();
+            updateUI();
+        }
+
+        function resetWater() {
+            state.water = 0;
+            persistUserState();
+            updateUI();
+        }
+
+        function renderStructuredMealSection() {
+            const container = document.getElementById('structuredMealSection');
+            const categories = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
+            const categoryIcons = { Breakfast: '🍳', Lunch: '🥗', Dinner: '🥩', Snack: '🍏' };
+
+            let html = '';
+
+            categories.forEach(cat => {
+                const catMeals = state.meals.filter(m => m.category === cat);
+                const totalCatCalories = catMeals.reduce((acc, curr) => acc + curr.calories, 0);
+
+                html += `
+                    <div class="border border-slate-100 rounded-2xl p-3 bg-slate-50/50">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="flex items-center gap-2">
+                                <span class="text-base">${categoryIcons[cat]}</span>
+                                <span class="text-xs font-extrabold text-slate-800">${cat}</span>
+                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200/60 text-slate-600">${catMeals.length}</span>
+                            </div>
+                            <span class="text-xs font-extrabold text-slate-900">${totalCatCalories} Kcal</span>
+                        </div>
+                `;
+
+                if (catMeals.length === 0) {
+                    html += `<p class="text-[11px] text-slate-400 font-medium pl-7 italic">No items added yet</p>`;
+                } else {
+                    html += `<div class="space-y-1.5 pl-2 border-l-2 border-blue-200 ml-3">`;
+                    catMeals.forEach(item => {
+                        const mealIndex = state.meals.indexOf(item);
+                        html += `
+                            <div class="flex items-center justify-between text-xs py-1 px-2 rounded-lg bg-white border border-slate-100">
+                                <span class="font-bold text-slate-700">${item.title}</span>
+                                <div class="flex items-center gap-2">
+                                    <span class="font-extrabold text-slate-900">${item.calories} Kcal</span>
+                                    <button onclick="removeMeal(${mealIndex})" class="text-slate-400 hover:text-rose-600 transition-colors">
+                                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    html += `</div>`;
+                }
+
+                html += `</div>`;
+            });
+
+            container.innerHTML = html;
+            lucide.createIcons();
+        }
+
+        function updateUI() {
+            const left = Math.max(0, state.goal - state.consumed);
+            const percentage = Math.min(100, Math.round((state.consumed / state.goal) * 100));
+
+            document.getElementById('statGoal').textContent = state.goal.toLocaleString();
+            document.getElementById('statFood').textContent = state.consumed.toLocaleString();
+            document.getElementById('statLeft').textContent = left.toLocaleString();
+
+            document.getElementById('statConsumedBig').textContent = state.consumed.toLocaleString();
+            document.getElementById('statGoalSub').textContent = `/ ${state.goal.toLocaleString()} Kcal`;
+            document.getElementById('statProgressBadge').textContent = `${percentage}% Goal`;
+            document.getElementById('statProgressBar').style.width = `${percentage}%`;
+
+            document.getElementById('statCarbs').textContent = `${state.carbs}g`;
+            document.getElementById('statProtein').textContent = `${state.protein}g`;
+            document.getElementById('statFat').textContent = `${state.fat}g`;
+
+            document.getElementById('waterText').textContent = `${state.water.toLocaleString()} / ${state.waterGoal.toLocaleString()} ml`;
+            const waterPercent = Math.min(100, Math.round((state.water / state.waterGoal) * 100));
+            document.getElementById('waterBar').style.width = `${waterPercent}%`;
+
+            renderStructuredMealSection();
+
+            if (macroChart) {
+                macroChart.data.datasets[0].data = [state.carbs, state.protein, state.fat, state.sugar, state.fiber];
+                macroChart.update();
+            }
+        }
+
+        // Initialize Chart
+        const foodCtx = document.getElementById('foodBalanceChart').getContext('2d');
+        macroChart = new Chart(foodCtx, {
+            type: 'bar',
+            data: {
+                labels: ['Carbs', 'Protein', 'Fat', 'Sugar', 'Fiber'],
+                datasets: [{
+                    data: [0, 0, 0, 0, 0],
+                    backgroundColor: ['#F59E0B', '#2563EB', '#F43F5E', '#A855F7', '#10B981'],
+                    borderRadius: 8,
+                    barThickness: 24
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { display: false }, ticks: { font: { size: 10, weight: '700' } } },
+                    y: { grid: { color: '#F1F5F9' }, ticks: { font: { size: 10 } } }
+                }
+            }
+        });
+
+        loadUserState();
+        syncProfileData();
+        renderCalendar();
+        updateUI();
+    </script>
+</body>
+</html>
