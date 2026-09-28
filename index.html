@@ -403,7 +403,7 @@
                     </div>
                 </div>
 
-                <form onsubmit="handleManualMealAdd(event)" class="space-y-3">
+                <form id="addMealForm" onsubmit="handleManualMealAdd(event)" class="space-y-3">
                     <div>
                         <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Meal Type</label>
                         <select id="mealCategory" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-600 font-medium">
@@ -414,13 +414,17 @@
                         </select>
                     </div>
 
-                    <div class="grid grid-cols-3 gap-2">
-                        <div class="col-span-2">
+                    <div class="grid grid-cols-12 gap-2">
+                        <div class="col-span-6">
                             <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Food Description</label>
                             <input type="text" id="mealTitle" required placeholder="e.g. Grilled Chicken & Rice" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-600">
                         </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Weight / Grams</label>
+                        <div class="col-span-3">
+                            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Quantity</label>
+                            <input type="number" id="mealQuantity" min="1" step="1" value="1" placeholder="1" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-600 font-bold text-slate-900">
+                        </div>
+                        <div class="col-span-3">
+                            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Weight</label>
                             <input type="text" id="mealGrams" placeholder="e.g. 200g" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-600">
                         </div>
                     </div>
@@ -1059,13 +1063,23 @@
         }
 
         function toggleAddMealModal() {
-            document.getElementById('addMealModal').classList.toggle('hidden');
+            const modal = document.getElementById('addMealModal');
+            const form = document.getElementById('addMealForm');
+            
+            modal.classList.toggle('hidden');
+            
+            // Reset form inputs to default values whenever opened/closed
+            if (form) {
+                form.reset();
+                document.getElementById('mealQuantity').value = 1;
+            }
         }
 
-        // AUTO-FILL MACROS USING GEMINI AI (Text / Grams based)
+        // AUTO-FILL MACROS USING GEMINI AI (Text / Grams / Quantity based)
         async function autoFillMacrosWithAI() {
             const mealTitle = document.getElementById('mealTitle').value.trim();
             const mealGrams = document.getElementById('mealGrams').value.trim();
+            const mealQuantity = document.getElementById('mealQuantity').value.trim() || "1";
 
             if (!mealTitle) {
                 alert("Please enter a food description first (e.g. 'Grilled Chicken & Rice')");
@@ -1090,12 +1104,14 @@
             try {
                 const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
                 
-                let prompt = `Calculate calories and macronutrients for this food item: "${mealTitle}".`;
+                let prompt = `Calculate total calories and macronutrients for this food item: "${mealTitle}".`;
+                prompt += ` The requested quantity is: ${mealQuantity}.`;
                 if (mealGrams) {
-                    prompt += ` The specified weight or quantity is: "${mealGrams}".`;
+                    prompt += ` The specified weight/serving size per unit is: "${mealGrams}".`;
                 } else {
-                    prompt += ` Assume a standard portion size.`;
+                    prompt += ` Assume a standard portion size per unit.`;
                 }
+                prompt += ` Please give the TOTAL combined calories and macronutrients corresponding to the full quantity of ${mealQuantity}.`;
 
                 const requestPayload = {
                     contents: [{
@@ -1212,9 +1228,15 @@
             event.preventDefault();
             const category = document.getElementById('mealCategory').value;
             let title = document.getElementById('mealTitle').value;
+            const quantity = parseInt(document.getElementById('mealQuantity').value) || 1;
             const grams = document.getElementById('mealGrams').value.trim();
-            if (grams) {
-                title += ` (${grams})`;
+            
+            let details = [];
+            if (quantity > 1) details.push(`${quantity}x`);
+            if (grams) details.push(grams);
+            
+            if (details.length > 0) {
+                title += ` (${details.join(', ')})`;
             }
 
             const calories = parseInt(document.getElementById('mealCalories').value) || 0;
@@ -1224,7 +1246,6 @@
 
             addMealToState(category, title, calories, protein, carbs, fat, 0, 0);
             toggleAddMealModal();
-            event.target.reset();
         }
 
         function addMealToState(category, title, calories, protein = 0, carbs = 0, fat = 0, sugar = 0, fiber = 0) {
