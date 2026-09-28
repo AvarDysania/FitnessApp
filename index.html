@@ -14,7 +14,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    
+
     <script>
         tailwind.config = {
             theme: {
@@ -495,7 +495,7 @@
 
         <!-- MAIN VIEWS -->
         <main class="p-4 sm:p-8 max-w-[1600px] mx-auto">
-            
+
             <!-- VIEW 1: DAILY TRACKER -->
             <div id="trackerTabContent" class="space-y-6">
                 <div class="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl p-5 text-white shadow-lg shadow-blue-500/20 flex items-center justify-between">
@@ -712,13 +712,14 @@
                 <span>Progress</span>
             </button>
             <a href="Profile.html" onclick="navigateToProfile(event)" class="flex flex-col items-center gap-1 text-slate-400 font-bold text-[10px] hover:text-slate-700 group">
+            <a href="Profile.html" onclick="navigateToProfile(event)" class="flex flex-col items-center gap-1 text-slate-400 font-bold text-[10px] hover:text-slate-700 group">
                 <i data-lucide="user" class="w-5 h-5 transition-transform group-active:scale-110"></i>
                 <span>Profile</span>
             </a>
         </div>
     </div>
 
-   
+
     <script>
         lucide.createIcons();
 
@@ -971,7 +972,7 @@
                 }
 
                 dayCard.className = `h-9 rounded-xl flex flex-col items-center justify-center text-xs font-bold relative cursor-pointer transition-all ${bgClasses}`;
-                
+
                 let checkBadge = '';
                 if (hasLoggedMeal) {
                     checkBadge = `<span class="absolute -top-1 -right-1 w-3.5 h-3.5 bg-blue-600 text-white text-[8px] rounded-full flex items-center justify-center font-bold border border-white">✓</span>`;
@@ -1044,9 +1045,9 @@
             const signUpEmail = document.getElementById('signUpEmail').value;
 
             const nameToDisplay = signUpName || (signInEmail ? signInEmail.split('@')[0] : '') || (signUpEmail ? signUpEmail.split('@')[0] : '') || "Logged In";
-            
+
             document.getElementById('authHeaderBtn').textContent = nameToDisplay;
-            
+
             const savedProfile = localStorage.getItem('healthive_profile');
             let profileObj = savedProfile ? JSON.parse(savedProfile) : {};
             profileObj.isLoggedIn = true;
@@ -1082,14 +1083,14 @@
 
             const aiBtn = document.getElementById('aiAutoFillBtn');
             const aiText = document.getElementById('aiAutoFillText');
-            
+
             // Visual loading state
             aiBtn.disabled = true;
             aiText.textContent = "Estimating...";
 
             try {
                 const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
-                
+
                 let prompt = `Calculate calories and macronutrients for this food item: "${mealTitle}".`;
                 if (mealGrams) {
                     prompt += ` The specified weight or quantity is: "${mealGrams}".`;
@@ -1259,7 +1260,7 @@
             const video = document.getElementById('cameraVideo');
             const imgPreview = document.getElementById('scannedImagePreview');
             const scannerBox = document.getElementById('scannerBox');
-            
+
             imgPreview.classList.add('hidden');
             imgPreview.src = '';
             scannerBox.classList.remove('hidden');
@@ -1278,7 +1279,7 @@
         function stopScanner() {
             const modal = document.getElementById('scannerModal');
             modal.classList.add('hidden');
-            
+
             const aiOverlay = document.getElementById('aiProcessingOverlay');
             if (aiOverlay) aiOverlay.classList.add('hidden');
 
@@ -1306,7 +1307,7 @@
             reader.onload = function(e) {
                 const fullBase64 = e.target.result;
                 const base64Data = fullBase64.split(',')[1];
-                
+
                 const modal = document.getElementById('scannerModal');
                 if (modal.classList.contains('hidden')) {
                     modal.classList.remove('hidden');
@@ -1597,4 +1598,5 @@
         updateUI();
     </script>
 </body>
+</html>
 </html>
